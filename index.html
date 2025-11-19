@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divine Promises Advent Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // NEW COLOR PALETTE (Metallics, Greens, Copper)
+                        'primary-bg': '#1F352D',      // Deep Forest Green (Main Background)
+                        'primary-accent': '#586A5D',  // Muted Sage Green (Door Color, Modal Citation)
+                        'highlight-copper': '#AC6730',// Rich Copper/Bronze (Highlight for text/numbers/rings)
+                        'grid-panel-bg': '#CDD1C3',   // Light Gray/Silver (Calendar Grid Container Background)
+                        'text-contrast': '#1F352D',   // Deep Forest Green (Dark text on light backgrounds)
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for aesthetic */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1F352D; /* Deep Forest Green background */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #AC6730; /* Copper scrollbar */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8B6440;
+        }
+
+        /* Basic door styles for the calendar grid */
+        .door {
+            aspect-ratio: 1 / 1;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            /* Border uses the Copper highlight color */
+            border: 3px solid #AC6730;
+        }
+
+        .door:hover:not(.locked) {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .locked {
+            filter: grayscale(80%) blur(1px);
+            cursor: not-allowed;
+            opacity: 0.7;
+            /* Stripe pattern uses Deep Forest Green and Muted Sage Green */
+            background-image: repeating-linear-gradient(45deg, #1F352D 0, #1F352D 10px, #586A5D 10px, #586A5D 20px);
+        }
+
+        .unopened-content {
+            background-color: #586A5D; /* Muted Sage Green for unopened doors */
+        }
+
+        .opened-content {
+            background-color: #F9FAFB;
+            color: #1F352D; /* Deep Forest Green text for contrast */
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-primary-bg text-white min-h-screen p-4 sm:p-8 font-sans flex flex-col items-center">
+
+    <div class="max-w-4xl w-full">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-highlight-copper mb-2 tracking-wide">
+                Divine Promises Calendar
+            </h1>
+            <p class="text-xl text-highlight-copper italic">
+                A daily verse to remind you of God's faithfulness.
+            </p>
+            <p id="date-info" class="text-sm mt-2 text-gray-300"></p>
+        </header>
+
+        <!-- Calendar Grid Container -->
+        <div id="calendar-grid" class="grid grid-cols-5 gap-3 sm:gap-4 md:gap-6 p-4 bg-grid-panel-bg rounded-xl shadow-2xl">
+            <!-- Doors will be generated here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center p-4 z-50 transition-opacity duration-300 opacity-0" onclick="closeModal()">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 sm:p-8 transform transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
+            <h3 id="modal-day" class="text-center text-3xl font-bold text-text-contrast mb-4"></h3>
+            
+            <div class="border-t border-b border-gray-300 py-4 mb-4">
+                <p id="modal-verse" class="text-center text-lg italic text-text-contrast font-medium"></p>
+                <p id="modal-citation" class="text-center text-sm font-semibold text-primary-accent mt-1"></p>
+            </div>
+
+            <p id="modal-message" class="text-text-contrast text-base leading-relaxed mb-6"></p>
+            
+            <button onclick="closeModal()" class="w-full py-3 bg-primary-bg text-white font-bold rounded-lg hover:bg-primary-bg/80 transition duration-150">
+                Close Promise
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSy...your...actual...key...here"; // Paste your key between the quotes!
+
+        // --- Advent Calendar Data (25 Promises - KJV EDITION) ---
+        const adventPromises = [
+            { day: 1, verse: "For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.", citation: "Jeremiah 29:11 (KJV)", message: "Today, embrace the truth that your life is guided by a loving plan. You have hope, a future, and divine intention supporting you." },
+            { day: 2, verse: "He shall cover thee with his feathers, and under his wings shalt thou trust: his truth shall be thy shield and buckler.", citation: "Psalm 91:4 (KJV)", message: "Rest in the promise of His unwavering protection. When the world feels turbulent, His faithfulness is your ultimate safeguard." },
+            { day: 3, verse: "Peace I leave with you, my peace I give unto you: not as the world giveth, give I unto you. Let not your heart be troubled, neither let it be afraid.", citation: "John 14:27 (KJV)", message: "The peace offered to you transcends all earthly understanding. Choose to let go of fear and anxiety, and welcome His perfect calm." },
+            { day: 4, verse: "Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee; yea, I will uphold thee with the right hand of my righteousness.", citation: "Isaiah 41:10 (KJV)", message: "In moments of weakness, remember where your true strength lies. The Lord Himself promises to fortify you and keep you standing." },
+            { day: 5, verse: "If we confess our sins, he is faithful and just to forgive us our sins, and to cleanse us from all unrighteousness.", citation: "1 John 1:9 (KJV)", message: "Walk in freedom today. His forgiveness is not just a possibility, but a faithful promise that cleanses and restores you completely." },
+            { day: 6, verse: "But my God shall supply all your need according to his riches in glory by Christ Jesus.", citation: "Philippians 4:19 (KJV)", message: "Do not worry about tomorrow. His provision is unlimited, based not on your scarcity, but on His endless, glorious wealth." },
+            { day: 7, verse: "I will instruct thee and teach thee in the way which thou shalt go: I will guide thee with mine eye.", citation: "Psalm 32:8 (KJV)", message: "You are never lost. Trust the subtle guidance of His loving eye. He is actively directing your steps toward your true path." },
+            { day: 8, verse: "And we know that all things work together for good to them that love God, to them who are called according to his purpose.", citation: "Romans 8:28 (KJV)", message: "Even challenges are woven into a greater design. Trust that the Lord is actively working every circumstance for your ultimate benefit and purpose." },
+            { day: 9, verse: "Therefore if any man be in Christ, he is a new creature: old things are passed away; behold, all things are become new.", citation: "2 Corinthians 5:17 (KJV)", message: "Celebrate the profound new life you have. Your past doesn't define you; you are a brand new masterpiece created by God." },
+            { day: 10, verse: "Nay, in all these things we are more than conquerors through him that loved us.", citation: "Romans 8:37 (KJV)", message: "You are called to victory! Face your day knowing that through Christ's love, you are destined to triumph over every opposition." },
+            { day: 11, verse: "Ask, and it shall be given you; seek, and ye shall find; knock, and it shall be opened unto you.", citation: "Matthew 7:7 (KJV)", message: "Take your requests and desires to the Lord with boldness. He promises that when you approach Him, He will respond with open generosity." },
+            { day: 12, verse: "And, lo, I am with you alway, even unto the end of the world. Amen.", citation: "Matthew 28:20 (KJV)", message: "You are never alone. This promise assures you of a constant, unwavering companion through every season of your life." },
+            { day: 13, verse: "Come unto me, all ye that labour and are heavy laden, and I will give you rest.", citation: "Matthew 11:28 (KJV)", message: "Let go of your burdens today. There is true, soul-deep rest available when you surrender your struggles to Him." },
+            { day: 14, verse: "If any of you lack wisdom, let him ask of God, that giveth to all men liberally, and upbraideth not; and it shall be given him.", citation: "James 1:5 (KJV)", message: "Need clarity? Ask for it! God promises to impart wisdom freely and without judgment whenever you seek His counsel." },
+            { day: 15, verse: "Which according to his abundant mercy hath begotten us again unto a lively hope by the resurrection of Jesus Christ from the dead, to an inheritance incorruptible, and undefiled, and that fadeth not away.", citation: "1 Peter 1:3-4 (KJV)", message: "Your future is secured in an inheritance beyond imagination—eternal, perfect, and indestructible. Live today in light of this glorious hope." },
+            { day: 16, verse: "For the LORD loveth judgment, and forsaketh not his saints; they are preserved for ever.", citation: "Psalm 37:28 (KJV)", message: "God’s commitment to you is eternal. He will not abandon you; you are held securely in His faithful hands today and always." },
+            { day: 17, verse: "For I am the LORD that healeth thee.", citation: "Exodus 15:26 (KJV)", message: "Whether physical, emotional, or spiritual, hold fast to the promise that the Lord is the ultimate source of healing and restoration." },
+            { day: 18, verse: "Thou wilt shew me the path of life: in thy presence is fulness of joy; at thy right hand there are pleasures for evermore.", citation: "Psalm 16:11 (KJV)", message: "Joy is not an accident; it is a gift found in His presence. Seek Him today and be filled with the pleasure that only He can provide." },
+            { day: 19, verse: "Stand fast therefore in the liberty wherewith Christ hath made us free, and be not entangled again with the yoke of bondage.", citation: "Galatians 5:1 (KJV)", message: "You have been liberated! Walk confidently in the freedom Christ purchased for you, rejecting anything that tries to hold you captive." },
+            { day: 20, verse: "A new heart also will I give you, and a new spirit will I put within you: and I will take away the stony heart out of your flesh, and I will give you an heart of flesh.", citation: "Ezekiel 36:26 (KJV)", message: "If you feel hardened or weary, ask for this transformation. He promises to renew your inner spirit and make your heart sensitive and alive." },
+            { day: 21, verse: "I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.", citation: "John 8:12 (KJV)", message: "Follow the Light. When decisions are unclear or the path is dim, fix your eyes on Him, and darkness will have no power over you." },
+            { day: 22, verse: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.", citation: "John 3:16 (KJV)", message: "This is the core promise: eternal life rooted in incomprehensible love. Rest in the glorious assurance of your endless life with Him." },
+            { day: 23, verse: "God is faithful, by whom ye were called unto the fellowship of his Son Jesus Christ our Lord.", citation: "1 Corinthians 1:9 (KJV)", message: "Your relationship with Jesus is a divine invitation. Thank God today for the faithful promise of deep and lasting companionship with your Savior." },
+            { day: 24, verse: "Behold, I come quickly: blessed is he that keepeth the sayings of the prophecy of this book.", citation: "Revelation 22:7 (KJV)", message: "Look up and live with expectation! The ultimate hope is the promised return of our Lord. Be ready, faithful, and full of anticipation." },
+            { day: 25, verse: "And the angel said unto them, Fear not: for, behold, I bring you good tidings of great joy, which shall be to all people. For unto you is born this day in the city of David a Saviour, which is Christ the Lord.", citation: "Luke 2:10-11 (KJV)", message: "The greatest promise fulfilled! The Lord has come to save. May your Christmas be filled with the joy, wonder, and glorious peace of His birth." }
+        ];
+
+        // --- Utility Functions (TTS) ---
+
+        /** Converts base64 encoded string to ArrayBuffer. */
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+
+        /** Converts PCM audio data to WAV format blob. */
+        const pcmToWav = (pcm16, sampleRate) => {
+            const numChannels = 1;
+            const bytesPerSample = 2;
+            const dataLength = pcm16.length * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + dataLength);
+            const view = new DataView(buffer);
+
+            // RIFF chunk
+            writeString(view, 0, 'RIFF'); 
+            view.setUint32(4, 36 + dataLength, true); 
+            writeString(view, 8, 'WAVE'); 
+
+            // FMT chunk
+            writeString(view, 12, 'fmt '); 
+            view.setUint32(16, 16, true); 
+            view.setUint16(20, 1, true); 
+            view.setUint16(22, numChannels, true); 
+            view.setUint32(24, sampleRate, true); 
+            view.setUint32(28, sampleRate * numChannels * bytesPerSample, true); 
+            view.setUint16(32, numChannels * bytesPerSample, true); 
+            view.setUint16(34, 16, true); 
+
+            // DATA chunk
+            writeString(view, 36, 'data'); 
+            view.setUint32(40, dataLength, true); 
+
+            // Write PCM data
+            let offset = 44;
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        };
+
+        /** Writes a string to a DataView at a specific offset. */
+        const writeString = (view, offset, string) => {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        };
+
+        /** Generates TTS audio for the given text. */
+        async function generateTTS(text) {
+            const voiceName = "Kore"; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
+            const payload = {
+                contents: [{ parts: [{ text: text }] }],
+                generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceName } } } },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) { throw new Error(`API error: ${response.status} ${response.statusText}`); }
+
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioData = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType;
+
+                    if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+                        const match = mimeType.match(/rate=(\d+)/);
+                        if (!match || match.length < 2) { return null; }
+                        const sampleRate = parseInt(match[1], 10);
+                        
+                        const pcmData = base64ToArrayBuffer(audioData);
+                        const pcm16 = new Int16Array(pcmData);
+                        const wavBlob = pcmToWav(pcm16, sampleRate);
+                        return URL.createObjectURL(wavBlob);
+                    } else {
+                        console.error("TTS response missing audio data or invalid mimeType:", part);
+                        return null;
+                    }
+                } catch (error) {
+                    console.error(`Attempt ${attempt + 1} failed:`, error);
+                    if (attempt < 2) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+            return null;
+        }
+
+        // --- Core Application Logic ---
+
+        const grid = document.getElementById('calendar-grid');
+        const modal = document.getElementById('modal');
+        const dateInfo = document.getElementById('date-info');
+        const currentMoment = new Date();
+        const currentMonth = currentMoment.getMonth() + 1; // 1-12
+        const currentDay = currentMoment.getDate();
+
+        // Determine the maximum day that can be opened
+        let maxOpenDay = 0;
+
+        if (currentMonth === 12) {
+            maxOpenDay = Math.min(currentDay, 25);
+            dateInfo.textContent = `Today is December ${currentDay}. Doors up to day ${maxOpenDay} are unlocked.`;
+        } else {
+            // For testing outside of December, only Day 1 is active
+            maxOpenDay = 1;
+            dateInfo.textContent = `It is not December. Only Door 1 is active for demonstration. (Current Date: ${currentMoment.toLocaleDateString()})`;
+        }
+
+        /**
+         * Renders all 25 doors into the calendar grid.
+         */
+        function renderCalendar() {
+            adventPromises.forEach((promise) => {
+                const day = promise.day;
+                const isLocked = day > maxOpenDay;
+
+                const door = document.createElement('div');
+                door.id = `door-${day}`;
+                door.classList.add(
+                    'door', 'rounded-lg', 'flex', 'flex-col', 'items-center', 'justify-center',
+                    'text-center', 'font-bold'
+                );
+                
+                // Add locked state classes
+                if (isLocked) {
+                    door.classList.add('locked', 'text-gray-400');
+                    // Locked number uses dimmed Copper
+                    door.innerHTML = `<span class="text-5xl text-highlight-copper/50">${day}</span>`;
+                } else {
+                    // Unlocked door: add visual effects and click listener
+                    door.classList.add('unopened-content', 'text-white', 'hover:bg-primary-accent/80', 'ring-2', 'ring-highlight-copper');
+                    // Unopened number uses full Copper
+                    door.innerHTML = `<span class="text-4xl sm:text-5xl text-highlight-copper">${day}</span>`;
+                    door.addEventListener('click', () => openDoor(day));
+                }
+
+                grid.appendChild(door);
+            });
+        }
+
+        /**
+         * Opens a door, changes its style, displays the modal, and triggers TTS.
+         * @param {number} day - The day number to open.
+         */
+        async function openDoor(day) {
+            const promise = adventPromises.find(p => p.day === day);
+            if (!promise) return;
+
+            // 1. Update the door style
+            const doorElement = document.getElementById(`door-${day}`);
+            if (doorElement && doorElement.classList.contains('unopened-content')) {
+                doorElement.classList.remove('unopened-content', 'text-white');
+                doorElement.classList.add('opened-content', 'text-text-contrast');
+                doorElement.innerHTML = `<span class="text-3xl">${day}</span><span class="text-xs mt-1">OPENED</span>`;
+                doorElement.onclick = () => showModal(promise); // Change click behavior to just show modal
+            }
+
+            // 2. Show the modal
+            showModal(promise);
+
+            // 3. Prepare text for TTS
+            const ttsText = `Day ${day}. Bible promise: ${promise.verse}. Message for you: ${promise.message}`;
+
+            // 4. TTS and Play Audio
+            const audioUrl = await generateTTS(ttsText);
+            if (audioUrl) {
+                const audio = new Audio(audioUrl);
+                audio.play().catch(e => console.error("Audio playback failed:", e));
+            } else {
+                console.warn("Could not generate audio for the promise.");
+            }
+        }
+
+        /**
+         * Populates and displays the modal.
+         * @param {object} promise - The promise object to display.
+         */
+        function showModal(promise) {
+            document.getElementById('modal-day').textContent = `Promise for Day ${promise.day}`;
+            document.getElementById('modal-verse').textContent = `"${promise.verse}"`;
+            document.getElementById('modal-citation').textContent = promise.citation;
+            document.getElementById('modal-message').textContent = promise.message;
+
+            // Display modal with transition effects
+            modal.classList.remove('hidden');
+            // Force reflow/repaint to ensure transition starts
+            void modal.offsetWidth; 
+            modal.classList.add('opacity-100');
+            modal.querySelector('div').classList.remove('scale-95');
+            modal.querySelector('div').classList.add('scale-100');
+        }
+
+        /**
+         * Hides the modal.
+         */
+        function closeModal() {
+            // Hide modal with transition effects
+            modal.classList.remove('opacity-100');
+            modal.querySelector('div').classList.remove('scale-100');
+            modal.querySelector('div').classList.add('scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300); // Wait for transition to finish
+        }
+
+        // Initialize the calendar when the window loads
+        window.onload = renderCalendar;
+    </script>
+</body>
+</html>
